@@ -38,6 +38,7 @@ async function handleBatchUpdateTransactions({
   deleted,
   updated,
   learnCategories,
+  detectOrphanPayees,
   runTransfers = true,
 }: Parameters<typeof batchUpdateTransactions>[0]) {
   const result = await batchUpdateTransactions({
@@ -45,6 +46,7 @@ async function handleBatchUpdateTransactions({
     updated,
     deleted,
     learnCategories,
+    detectOrphanPayees,
     runTransfers,
   });
 
