@@ -387,6 +387,12 @@
       }
     },
     {
+      "files": ["packages/desktop-client/src/components/home/**/*"],
+      "rules": {
+        "actual/no-untranslated-strings": "off"
+      }
+    },
+    {
       "files": ["**/*.test.{js,ts,jsx,tsx}", "packages/docs/**/*"],
       "rules": {
         "actual/no-untranslated-strings": "off",

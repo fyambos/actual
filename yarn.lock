@@ -280,6 +280,7 @@ __metadata:
     i18next-resources-to-backend: "npm:^1.2.1"
     jsdom: "npm:^29.1.1"
     lru-cache: "npm:^11.5.2"
+    lucide-react: "npm:^1.55.0"
     mdast-util-newline-to-break: "npm:^2.0.0"
     plugins-service: "workspace:*"
     re-resizable: "npm:^6.11.2"
@@ -18764,6 +18765,19 @@ __metadata:
   dependencies:
     yallist: "npm:^4.0.0"
   checksum: 10/fc1fe2ee205f7c8855fa0f34c1ab0bcf14b6229e35579ec1fd1079f31d6fc8ef8eb6fd17f2f4d99788d7e339f50e047555551ebd5e434dda503696e7c6591825
+  languageName: node
+  linkType: hard
+
+"lucide-react@npm:^1.55.0":
+  version: 1.55.0
+  resolution: "lucide-react@npm:1.55.0"
+  peerDependencies:
+    "@types/react": "*"
+    react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10/e505eff378f24e8da2a1f6e72069d863cba456bd7072fefca34892e72d7a388c6cacb7f9c8ba779407e17a022a6c9b5bf236af499c524801f7bf0d9a988cc58f
   languageName: node
   linkType: hard
 

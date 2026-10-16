@@ -29,6 +29,7 @@ import { ContextMenu } from './ContextMenu';
 import { EnableBankingCallback } from './EnableBankingCallback';
 import { FeatureErrorFallback } from './FeatureErrorFallback';
 import { GlobalKeys } from './GlobalKeys';
+import { HomeApp } from './home/HomeApp';
 import { MobileBankSyncAccountEditPage } from './mobile/banksync/MobileBankSyncAccountEditPage';
 import { MobileNavTabs } from './mobile/MobileNavTabs';
 import { TransactionEdit } from './mobile/transactions/TransactionEdit';
@@ -197,6 +198,14 @@ export function FinancesApp() {
 
   const scrollableRef = useRef<HTMLDivElement>(null);
 
+  if (location.pathname === '/home' || location.pathname.startsWith('/home/')) {
+    return (
+      <Routes>
+        <Route path="/home/*" element={<HomeApp />} />
+      </Routes>
+    );
+  }
+
   return (
     <TourProvider>
       <View style={{ height: '100%' }}>
@@ -252,10 +261,7 @@ export function FinancesApp() {
                   {isNarrowWidth && <MobilePageHeaderSlot />}
 
                   <Routes>
-                    <Route
-                      path="/"
-                      element={<Navigate to="/budget" replace />}
-                    />
+                    <Route path="/" element={<Navigate to="/home" replace />} />
 
                     <Route path="/reports/*" element={<Reports />} />
 
