@@ -79,7 +79,7 @@ export function SettingsScreen() {
         <View style={columns(mode, '1fr 1fr')}>
           <NumberSetting
             label="Délai avant de rapprocher"
-            hint="Une saisie arrive dans « À traiter » si la banque ne l'a pas confirmée après ce nombre de jours ouvrés (week-ends exclus). Une carte met en général 1 à 3 jours."
+            hint="Après ce nombre de jours ouvrés (week-ends exclus), une saisie que la banque n'a pas confirmée, ou un virement dont l'achat est introuvable, arrive dans « À traiter ». Une carte ou PayPal met en général 1 à 3 jours."
             value={days}
             unit="jours"
             decimals={false}

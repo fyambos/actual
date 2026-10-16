@@ -3,20 +3,18 @@ import React from 'react';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import * as monthUtils from '@actual-app/core/shared/months';
-import { q } from '@actual-app/core/shared/query';
 import type { TransactionEntity } from '@actual-app/core/types/models';
 import { ArrowLeftRight } from 'lucide-react';
 
 import { useCategoriesById } from '#hooks/useCategories';
 import { usePayeesById } from '#hooks/usePayees';
-import { useQuery } from '#hooks/useQuery';
 
 import { accent, radius } from './design';
-import { isPending, transferPurpose } from './entries';
+import { isPending } from './entries';
 import { CategoryTile } from './layout';
 import { merchantName } from './recurring';
 import { formatAmount } from './spending';
+import { transferPurpose } from './transfers';
 
 const shortDate = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric',
@@ -32,10 +30,12 @@ const longDate = new Intl.DateTimeFormat('fr-FR', {
 function Row({
   transaction: t,
   showDate,
+  purposes,
   onSelect,
 }: {
   transaction: TransactionEntity;
   showDate?: boolean;
+  purposes?: ReadonlyMap<string, string | null>;
   onSelect: (transaction: TransactionEntity) => void;
 }) {
   const { data: payees } = usePayeesById();
@@ -48,41 +48,13 @@ function Row({
       ? `${t.amount < 0 ? 'Vers' : 'Depuis'} ${payee.name}`
       : merchantName(payee.name)
     : 'Sans nom';
-  const purpose = transfer ? transferPurpose(t.notes) : null;
-  // Without a written purpose, a payment out to another account is matched to the purchase of
-  // the same amount made there in the week before (a PayPal debit follows the purchase).
-  const target =
-    transfer && !purpose && t.amount < 0 ? payee?.transfer_acct : null;
-  const { data: paid } = useQuery<{ date: string; payee: string | null }>(
-    () =>
-      target
-        ? q('transactions')
-            .filter({
-              account: target,
-              amount: t.amount,
-              transfer_id: null,
-              $and: [
-                { date: { $gte: monthUtils.subDays(t.date, 7) } },
-                { date: { $lte: t.date } },
-              ],
-            })
-            .orderBy({ date: 'desc' })
-            .select(['date', 'payee'])
-            .limit(1)
-        : null,
-    [target, t.amount, t.date],
-  );
-  const purchase = paid?.[0];
-  const guessed =
-    purchase?.payee && payees?.[purchase.payee]
-      ? `${merchantName(payees[purchase.payee].name)} du ${shortDate.format(
-          new Date(`${purchase.date}T12:00:00`),
-        )}`
-      : null;
+  const purpose = transfer
+    ? (purposes?.get(t.id) ?? transferPurpose(t.notes))
+    : null;
   const details = [
     showDate ? shortDate.format(new Date(`${t.date}T12:00:00`)) : null,
     transfer
-      ? (purpose ?? guessed ?? category ?? 'Virement')
+      ? (purpose ?? category ?? 'Virement')
       : (category ?? 'Sans catégorie'),
   ]
     .filter(Boolean)
@@ -187,11 +159,14 @@ export function TransactionList({
   transactions,
   showDate,
   groupByDay,
+  purposes,
   empty,
   onSelect,
 }: {
   transactions: readonly TransactionEntity[];
   showDate?: boolean;
+  // What each transfer paid for, from useTransferPurposes.
+  purposes?: ReadonlyMap<string, string | null>;
   // Day headers with the day's net total, for long lists.
   groupByDay?: boolean;
   empty: string;
@@ -213,6 +188,7 @@ export function TransactionList({
             key={t.id}
             transaction={t}
             showDate={showDate}
+            purposes={purposes}
             onSelect={onSelect}
           />
         ))}
@@ -257,7 +233,12 @@ export function TransactionList({
               </Text>
             </View>
             {lines.map(t => (
-              <Row key={t.id} transaction={t} onSelect={onSelect} />
+              <Row
+                key={t.id}
+                transaction={t}
+                purposes={purposes}
+                onSelect={onSelect}
+              />
             ))}
           </View>
         );

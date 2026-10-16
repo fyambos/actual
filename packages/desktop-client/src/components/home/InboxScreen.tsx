@@ -29,6 +29,7 @@ import { columns, useLayoutMode } from './responsive';
 import { formatAmount } from './spending';
 import { TransactionList } from './TransactionList';
 import { TransactionSheet } from './TransactionSheet';
+import { useUnexplainedTransfers, withPurpose } from './transfers';
 
 const shortDate = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'short',
@@ -83,10 +84,12 @@ export function useInboxCounts() {
   const uncategorized = useUncategorized().data ?? [];
   const pending = (usePendingEntries().data ?? []).filter(isPending);
   const overdue = pending.filter(t => isOverdue(t.date, today, days));
+  const unexplained = useUnexplainedTransfers();
   return {
     uncategorized: uncategorized.length,
     toReconcile: overdue.length,
-    total: uncategorized.length + overdue.length,
+    toExplain: unexplained.length,
+    total: uncategorized.length + overdue.length + unexplained.length,
   };
 }
 
@@ -173,6 +176,97 @@ function CandidateRow({
   );
 }
 
+// A payment to another account nothing explains: the user writes what it paid for.
+function TransferToExplain({
+  transfer,
+  accountName,
+  payeeName,
+}: {
+  transfer: TransactionEntity;
+  accountName: string;
+  payeeName: string;
+}) {
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!text.trim()) return;
+    setSaving(true);
+    try {
+      await saveTransactions({
+        updated: [
+          { ...transfer, notes: withPurpose(transfer.notes, text.trim()) },
+        ],
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card style={{ gap: 12, padding: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Text style={{ fontSize: 16, fontWeight: 600 }}>
+            Vers {payeeName}
+          </Text>
+          <Text style={{ fontSize: 13, color: theme.pageTextSubdued }}>
+            {formatDay(transfer.date)} · depuis {accountName}
+          </Text>
+        </View>
+        <Text style={{ fontSize: 17, fontWeight: 700 }}>
+          {formatAmount(transfer.amount)}
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <input
+          placeholder="Ce que ce virement a payé"
+          aria-label="Ce que ce virement a payé"
+          value={text}
+          onChange={event => setText(event.target.value)}
+          onKeyDown={event => {
+            if (event.key === 'Enter') void save();
+          }}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            height: 40,
+            padding: '0 14px',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: radius.pill,
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            color: theme.pageText,
+            fontSize: 14,
+            outline: 'none',
+          }}
+        />
+        <button
+          type="button"
+          disabled={saving || !text.trim()}
+          onClick={() => void save()}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            height: 40,
+            padding: '0 14px',
+            border: 'none',
+            borderRadius: radius.pill,
+            backgroundColor: text.trim() ? accent : 'rgba(255, 255, 255, 0.06)',
+            color: text.trim() ? '#fff' : theme.pageTextSubdued,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: text.trim() ? 'pointer' : 'default',
+          }}
+        >
+          <Check size={15} />
+          Enregistrer
+        </button>
+      </View>
+    </Card>
+  );
+}
+
 export function InboxScreen() {
   const mode = useLayoutMode();
   const today = currentDay();
@@ -184,6 +278,7 @@ export function InboxScreen() {
   const pending = (usePendingEntries().data ?? []).filter(isPending);
   const overdue = pending.filter(t => isOverdue(t.date, today, days));
   const waiting = pending.length - overdue.length;
+  const unexplained = useUnexplainedTransfers();
   const [editing, setEditing] = useState<TransactionEntity | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -388,6 +483,34 @@ export function InboxScreen() {
         </View>
 
         <View style={{ gap: 10 }}>
+          {unexplained.length > 0 && (
+            <>
+              <SectionTitle>
+                Virements à expliquer ({unexplained.length})
+              </SectionTitle>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: theme.pageTextSubdued,
+                  padding: '0 4px',
+                }}
+              >
+                Aucun achat ne correspond à ces virements après {days} jours
+                ouvrés. Une fois expliqués, ils disparaissent des listes.
+              </Text>
+              {unexplained.map(t => {
+                const payee = t.payee ? payees?.[t.payee] : null;
+                return (
+                  <TransferToExplain
+                    key={t.id}
+                    transfer={t}
+                    accountName={accountName(t.account)}
+                    payeeName={payee?.name ?? 'un autre compte'}
+                  />
+                );
+              })}
+            </>
+          )}
           <SectionTitle>À catégoriser ({uncategorized.length})</SectionTitle>
           <Card style={{ padding: 6 }}>
             <TransactionList

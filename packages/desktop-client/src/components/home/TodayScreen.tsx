@@ -33,6 +33,7 @@ import {
 import { useIsSubscription } from './subscriptions';
 import { TransactionList } from './TransactionList';
 import { TransactionSheet } from './TransactionSheet';
+import { useTransferPurposes } from './transfers';
 
 function Stat({
   label,
@@ -185,15 +186,22 @@ export function TodayScreen() {
   const { data: latest } = useQuery<TransactionEntity>(
     () =>
       q('transactions')
-        // Transfers between accounts are not activity: the purchase they paid for already shows.
-        .filter({ starting_balance_flag: false, transfer_id: null })
+        .filter({ starting_balance_flag: false })
         .orderBy([{ date: 'desc' }, { sort_order: 'desc' }])
         .select('*')
         .options({ splits: 'inline' })
-        .limit(8),
+        .limit(40),
     [],
   );
-  const recent = latest ?? [];
+  const purposes = useTransferPurposes(
+    (latest ?? []).at(-1)?.date ?? today,
+    today,
+  );
+  // A transfer whose purchase is found adds nothing: the purchase already shows. One left
+  // unexplained stays, from the side money leaves.
+  const recent = (latest ?? [])
+    .filter(t => !t.transfer_id || (t.amount < 0 && purposes.get(t.id) == null))
+    .slice(0, 8);
   const received = incomes.reduce((sum, t) => sum + t.amount, 0);
 
   const overline = new Intl.DateTimeFormat('fr-FR', {
@@ -392,6 +400,7 @@ export function TodayScreen() {
         <Card style={{ padding: 6 }}>
           <TransactionList
             transactions={recent}
+            purposes={purposes}
             showDate
             empty="Aucune opération pour l'instant."
             onSelect={setEditing}

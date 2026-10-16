@@ -23,6 +23,7 @@ import { useLayoutMode } from './responsive';
 import { formatAmount } from './spending';
 import { TransactionList } from './TransactionList';
 import { TransactionSheet } from './TransactionSheet';
+import { useTransferPurposes } from './transfers';
 
 const units: Array<[PeriodUnit, string]> = [
   ['days', 'Jours'],
@@ -123,6 +124,7 @@ export function TransactionsScreen() {
         .options({ splits: 'inline' }),
     [period.start, period.end, accountId],
   );
+  const purposes = useTransferPurposes(period.start, period.end);
 
   const lines = useMemo(() => {
     const needle = search
@@ -133,8 +135,12 @@ export function TransactionsScreen() {
     return (data ?? []).filter(t => {
       // Across all accounts a transfer would show twice; keep the side money leaves from.
       if (!accountId && t.transfer_id && t.amount > 0) return false;
-      // Transfers only move money between accounts; they get their own filter.
-      if ((kind === 'transfers') !== Boolean(t.transfer_id)) return false;
+      // Transfers only move money between accounts: they have their own filter, and elsewhere
+      // only the ones nothing explains are shown.
+      if (kind === 'transfers' && !t.transfer_id) return false;
+      if (kind !== 'transfers' && t.transfer_id && purposes.get(t.id) != null) {
+        return false;
+      }
       if (kind === 'out' && t.amount >= 0) return false;
       if (kind === 'in' && t.amount <= 0) return false;
       if (!needle) return true;
@@ -150,7 +156,7 @@ export function TransactionsScreen() {
         .replace(/[̀-ͯ]/g, '');
       return text.includes(needle);
     });
-  }, [data, accountId, kind, search, payees, categories]);
+  }, [data, accountId, kind, search, payees, categories, purposes]);
 
   const spent = lines
     .filter(t => t.amount < 0 && !t.transfer_id)
@@ -335,6 +341,7 @@ export function TransactionsScreen() {
       <Card style={{ padding: '0 6px 6px' }}>
         <TransactionList
           transactions={lines.slice(0, limit)}
+          purposes={purposes}
           groupByDay
           empty="Aucune opération sur cette période."
           onSelect={setEditing}
