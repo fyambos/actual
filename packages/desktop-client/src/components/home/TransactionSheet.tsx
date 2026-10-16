@@ -401,7 +401,7 @@ export function TransactionSheet({
         </View>
         <View style={{ maxHeight: 230, overflowY: 'auto', gap: 12 }}>
           {groups.map(group => (
-            <View key={group.id} style={{ gap: 6 }}>
+            <View key={group.id} style={{ gap: 6, flexShrink: 0 }}>
               <Label>{group.name}</Label>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {group.categories.map(category => {

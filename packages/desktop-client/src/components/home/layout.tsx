@@ -234,7 +234,8 @@ export function Sheet({
             <X size={18} />
           </IconButton>
         </View>
-        {children}
+        {/* Views shrink by default; inside this capped, scrolling sheet they would overlap. */}
+        <View style={{ gap: 18, flexShrink: 0 }}>{children}</View>
       </View>
     </View>
   );

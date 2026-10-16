@@ -246,7 +246,17 @@ function ScrollArea({ children }: { children: ReactNode }) {
         flexDirection: 'column',
       }}
     >
-      {children}
+      {/* Keeps long screens at their full height instead of squeezing them to the viewport. */}
+      <div
+        style={{
+          flexGrow: 1,
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
