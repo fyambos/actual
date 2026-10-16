@@ -3,6 +3,7 @@ import React from 'react';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+import * as monthUtils from '@actual-app/core/shared/months';
 
 import { categoryLook, radius } from './design';
 import { Card, ScreenHeader, SectionTitle } from './layout';
@@ -14,6 +15,11 @@ import { useSubscriptions } from './subscriptions';
 const shortDate = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric',
   month: 'short',
+});
+
+const monthYear = new Intl.DateTimeFormat('fr-FR', {
+  month: 'short',
+  year: 'numeric',
 });
 
 function MerchantAvatar({ name }: { name: string }) {
@@ -40,7 +46,12 @@ function MerchantAvatar({ name }: { name: string }) {
 
 export function SubscriptionsScreen() {
   const mode = useLayoutMode();
-  const subscriptions = useSubscriptions();
+  const today = monthUtils.currentDay();
+  const all = useSubscriptions();
+  const subscriptions = all.filter(s => s.active);
+  const ended = all
+    .filter(s => !s.active)
+    .sort((a, b) => b.lastDate.localeCompare(a.lastDate));
 
   const perMonth = subscriptions.reduce((sum, s) => sum + monthlyCost(s), 0);
 
@@ -113,18 +124,65 @@ export function SubscriptionsScreen() {
               <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                 <Text style={{ fontSize: 16, fontWeight: 500 }}>{s.name}</Text>
                 <Text style={{ fontSize: 13, color: theme.pageTextSubdued }}>
-                  Prochain :{' '}
+                  {s.nextDate < today ? 'Attendu depuis le' : 'Prochain :'}{' '}
                   {shortDate.format(new Date(`${s.nextDate}T12:00:00`))}
                   {s.period === 'yearly' ? ' · par an' : ''}
+                  {s.variable ? " · selon l'usage" : ''}
                 </Text>
               </View>
               <Text style={{ fontSize: 16, fontWeight: 600 }}>
+                {s.variable ? '~' : ''}
                 {formatAmount(s.amount)}
               </Text>
             </View>
           ))
         )}
       </Card>
+
+      {ended.length > 0 && (
+        <>
+          <SectionTitle>{ended.length} abonnements terminés</SectionTitle>
+          <Card
+            style={{
+              padding: 6,
+              display: mode === 'phone' ? 'flex' : 'grid',
+              gridTemplateColumns:
+                mode === 'desktop' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+              columnGap: 8,
+            }}
+          >
+            {ended.map(s => (
+              <View
+                key={`${s.name}-${s.amount}-${s.lastDate}`}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 12px',
+                  opacity: 0.7,
+                }}
+              >
+                <MerchantAvatar name={s.name} />
+                <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                  <Text style={{ fontSize: 16, fontWeight: 500 }}>
+                    {s.name}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: theme.pageTextSubdued }}>
+                    {monthYear.format(new Date(`${s.firstDate}T12:00:00`))} →{' '}
+                    {monthYear.format(new Date(`${s.lastDate}T12:00:00`))} ·{' '}
+                    {formatAmount(s.total)} au total
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: 600 }}>
+                  {s.variable ? '~' : ''}
+                  {formatAmount(s.amount)}
+                  {s.period === 'yearly' ? '/an' : '/mois'}
+                </Text>
+              </View>
+            ))}
+          </Card>
+        </>
+      )}
     </View>
   );
 }

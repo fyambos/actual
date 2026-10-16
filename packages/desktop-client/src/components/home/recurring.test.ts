@@ -58,10 +58,77 @@ describe('detectSubscriptions', () => {
     expect(found).toHaveLength(1);
   });
 
-  it('ignores a plan that stopped', () => {
+  it('keeps a plan that stopped, marked as ended', () => {
     const found = detectSubscriptions(
       monthly('Netflix', 799, ['2026-01-08', '2026-02-08', '2026-03-08']),
       '2026-10-01',
+    );
+    expect(found).toEqual([
+      expect.objectContaining({
+        name: 'Netflix',
+        active: false,
+        firstDate: '2026-01-08',
+        lastDate: '2026-03-08',
+        total: 2397,
+      }),
+    ]);
+  });
+
+  it('finds a plan billed by usage, whose amount changes every month', () => {
+    const found = detectSubscriptions(
+      [
+        { name: 'Railway', amount: 616, date: '2026-07-06' },
+        { name: 'Railway', amount: 714, date: '2026-08-06' },
+        { name: 'Railway', amount: 88, date: '2026-09-07' },
+        { name: 'Railway', amount: 762, date: '2026-10-06' },
+      ],
+      '2026-10-16',
+    );
+    expect(found).toEqual([
+      expect.objectContaining({
+        name: 'Railway',
+        variable: true,
+        active: true,
+        nextDate: '2026-11-06',
+      }),
+    ]);
+  });
+
+  it('follows a price that drifted instead of stopping at the old one', () => {
+    const found = detectSubscriptions(
+      [
+        { name: 'DigitalOcean', amount: 3885, date: '2026-07-01' },
+        { name: 'DigitalOcean', amount: 3861, date: '2026-08-01' },
+        { name: 'DigitalOcean', amount: 4077, date: '2026-09-01' },
+        { name: 'DigitalOcean', amount: 4513, date: '2026-10-01' },
+      ],
+      '2026-10-16',
+    );
+    expect(found).toEqual([
+      expect.objectContaining({
+        lastDate: '2026-10-01',
+        nextDate: '2026-11-01',
+      }),
+    ]);
+  });
+
+  it('ignores everyday shops that happen to recur', () => {
+    const found = detectSubscriptions(
+      [
+        {
+          name: 'Boulangerie',
+          amount: 620,
+          date: '2024-10-01',
+          category: 'Supermarché / Épicerie',
+        },
+        {
+          name: 'Boulangerie',
+          amount: 620,
+          date: '2025-10-01',
+          category: 'Supermarché / Épicerie',
+        },
+      ],
+      '2026-01-01',
     );
     expect(found).toEqual([]);
   });
@@ -121,5 +188,22 @@ describe('matchesSubscription', () => {
     expect(matchesSubscription({ name: 'Uber Eats', amount: 599 }, plans)).toBe(
       false,
     );
+  });
+
+  it('finds a plan hidden among other fees of a similar amount', () => {
+    const fees = ['2026-06-04', '2026-07-06', '2026-08-04', '2026-09-04'].map(
+      date => ({ name: 'Banque', amount: 270, date }),
+    );
+    const found = detectSubscriptions(
+      [
+        ...fees,
+        { name: 'Banque', amount: 280, date: '2026-07-20' },
+        { name: 'Banque', amount: 290, date: '2026-08-11' },
+      ],
+      '2026-09-20',
+    );
+    expect(found).toEqual([
+      expect.objectContaining({ amount: 270, active: true }),
+    ]);
   });
 });

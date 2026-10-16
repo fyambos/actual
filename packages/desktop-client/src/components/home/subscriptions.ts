@@ -15,12 +15,16 @@ import { useSpending } from './spending';
 
 const SUBSCRIPTIONS_GROUP = 'Abonnements';
 
-// Plans found in the last 400 days of spending, the same list the Abonnements screen shows.
+// How far back plans are looked for, so ended ones show too.
+const HISTORY_DAYS = 3 * 365;
+
+// Plans found in the last three years of spending, active and ended: the Abonnements screen.
 export function useSubscriptions() {
   const today = monthUtils.currentDay();
-  const since = monthUtils.subDays(today, 400);
+  const since = monthUtils.subDays(today, HISTORY_DAYS);
   const { transactions } = useSpending({ date: { $gte: since } });
   const { data: payees } = usePayeesById();
+  const { data: categories } = useCategoriesById();
 
   return useMemo(() => {
     const charges = transactions
@@ -29,9 +33,10 @@ export function useSubscriptions() {
         date: t.date,
         amount: -t.amount,
         name: merchantName(payees![t.payee!].name),
+        category: t.category ? categories?.list[t.category]?.name : null,
       }));
     return detectSubscriptions(charges, today);
-  }, [transactions, payees, today]);
+  }, [transactions, payees, categories, today]);
 }
 
 // Tells subscription charges apart: filed under the Abonnements group, or a detected plan.
