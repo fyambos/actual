@@ -31,11 +31,12 @@ const units: Array<[PeriodUnit, string]> = [
   ['years', 'Années'],
 ];
 
-type Kind = 'all' | 'out' | 'in';
+type Kind = 'all' | 'out' | 'in' | 'transfers';
 const kinds: Array<[Kind, string]> = [
   ['all', 'Tout'],
   ['out', 'Dépenses'],
   ['in', 'Rentrées'],
+  ['transfers', 'Virements'],
 ];
 
 // Long periods are cut at this many lines until asked for more.
@@ -132,6 +133,8 @@ export function TransactionsScreen() {
     return (data ?? []).filter(t => {
       // Across all accounts a transfer would show twice; keep the side money leaves from.
       if (!accountId && t.transfer_id && t.amount > 0) return false;
+      // Transfers only move money between accounts; they get their own filter.
+      if ((kind === 'transfers') !== Boolean(t.transfer_id)) return false;
       if (kind === 'out' && t.amount >= 0) return false;
       if (kind === 'in' && t.amount <= 0) return false;
       if (!needle) return true;

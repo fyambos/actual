@@ -127,3 +127,8 @@ export async function mergeIntoBank(
     previousPayees: bank.map(line => line.payee),
   });
 }
+
+// What a transfer paid for, from the "Pour : …" part of its notes.
+export function transferPurpose(notes: string | null | undefined) {
+  return notes?.match(/(?:^|\|)\s*Pour : ([^|]+)/)?.[1].trim() ?? null;
+}

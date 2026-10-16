@@ -185,17 +185,15 @@ export function TodayScreen() {
   const { data: latest } = useQuery<TransactionEntity>(
     () =>
       q('transactions')
-        .filter({ starting_balance_flag: false })
+        // Transfers between accounts are not activity: the purchase they paid for already shows.
+        .filter({ starting_balance_flag: false, transfer_id: null })
         .orderBy([{ date: 'desc' }, { sort_order: 'desc' }])
         .select('*')
         .options({ splits: 'inline' })
-        .limit(16),
+        .limit(8),
     [],
   );
-  // Both sides of a transfer would show; keep the one money leaves from.
-  const recent = (latest ?? [])
-    .filter(t => !(t.transfer_id && t.amount > 0))
-    .slice(0, 8);
+  const recent = latest ?? [];
   const received = incomes.reduce((sum, t) => sum + t.amount, 0);
 
   const overline = new Intl.DateTimeFormat('fr-FR', {

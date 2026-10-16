@@ -3,14 +3,17 @@ import React from 'react';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+import * as monthUtils from '@actual-app/core/shared/months';
+import { q } from '@actual-app/core/shared/query';
 import type { TransactionEntity } from '@actual-app/core/types/models';
 import { ArrowLeftRight } from 'lucide-react';
 
 import { useCategoriesById } from '#hooks/useCategories';
 import { usePayeesById } from '#hooks/usePayees';
+import { useQuery } from '#hooks/useQuery';
 
 import { accent, radius } from './design';
-import { isPending } from './entries';
+import { isPending, transferPurpose } from './entries';
 import { CategoryTile } from './layout';
 import { merchantName } from './recurring';
 import { formatAmount } from './spending';
@@ -45,9 +48,42 @@ function Row({
       ? `${t.amount < 0 ? 'Vers' : 'Depuis'} ${payee.name}`
       : merchantName(payee.name)
     : 'Sans nom';
+  const purpose = transfer ? transferPurpose(t.notes) : null;
+  // Without a written purpose, a payment out to another account is matched to the purchase of
+  // the same amount made there in the week before (a PayPal debit follows the purchase).
+  const target =
+    transfer && !purpose && t.amount < 0 ? payee?.transfer_acct : null;
+  const { data: paid } = useQuery<{ date: string; payee: string | null }>(
+    () =>
+      target
+        ? q('transactions')
+            .filter({
+              account: target,
+              amount: t.amount,
+              transfer_id: null,
+              $and: [
+                { date: { $gte: monthUtils.subDays(t.date, 7) } },
+                { date: { $lte: t.date } },
+              ],
+            })
+            .orderBy({ date: 'desc' })
+            .select(['date', 'payee'])
+            .limit(1)
+        : null,
+    [target, t.amount, t.date],
+  );
+  const purchase = paid?.[0];
+  const guessed =
+    purchase?.payee && payees?.[purchase.payee]
+      ? `${merchantName(payees[purchase.payee].name)} du ${shortDate.format(
+          new Date(`${purchase.date}T12:00:00`),
+        )}`
+      : null;
   const details = [
     showDate ? shortDate.format(new Date(`${t.date}T12:00:00`)) : null,
-    transfer ? (category ?? 'Virement') : (category ?? 'Sans catégorie'),
+    transfer
+      ? (purpose ?? guessed ?? category ?? 'Virement')
+      : (category ?? 'Sans catégorie'),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -102,7 +138,16 @@ function Row({
           {name}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={{ fontSize: 13, color: theme.pageTextSubdued }}>
+          <Text
+            style={{
+              fontSize: 13,
+              color: theme.pageTextSubdued,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+            }}
+          >
             {details}
           </Text>
           {isPending(t) && !transfer && (
