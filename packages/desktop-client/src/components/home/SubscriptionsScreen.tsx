@@ -1,17 +1,15 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import * as monthUtils from '@actual-app/core/shared/months';
-
-import { usePayeesById } from '#hooks/usePayees';
 
 import { categoryLook, radius } from './design';
 import { Card, ScreenHeader, SectionTitle } from './layout';
-import { detectSubscriptions, merchantName, monthlyCost } from './recurring';
+import { monthlyCost } from './recurring';
 import { useLayoutMode } from './responsive';
-import { formatAmount, useSpending } from './spending';
+import { formatAmount } from './spending';
+import { useSubscriptions } from './subscriptions';
 
 const shortDate = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric',
@@ -41,22 +39,8 @@ function MerchantAvatar({ name }: { name: string }) {
 }
 
 export function SubscriptionsScreen() {
-  const today = monthUtils.currentDay();
   const mode = useLayoutMode();
-  const since = monthUtils.subDays(today, 400);
-  const { transactions } = useSpending({ date: { $gte: since } });
-  const { data: payees } = usePayeesById();
-
-  const subscriptions = useMemo(() => {
-    const charges = transactions
-      .filter(t => t.payee && payees?.[t.payee])
-      .map(t => ({
-        date: t.date,
-        amount: -t.amount,
-        name: merchantName(payees![t.payee!].name),
-      }));
-    return detectSubscriptions(charges, today);
-  }, [transactions, payees, today]);
+  const subscriptions = useSubscriptions();
 
   const perMonth = subscriptions.reduce((sum, s) => sum + monthlyCost(s), 0);
 

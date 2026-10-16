@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router';
 
@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   List,
   PiggyBank,
+  RefreshCw,
   Repeat,
   Settings,
   Sun,
@@ -229,6 +230,58 @@ function SideBar({ compact }: { compact: boolean }) {
   );
 }
 
+// A new version is downloaded in the background; it only replaces the open one when asked.
+function UpdateBanner() {
+  const [ready, setReady] = useState(() =>
+    global.Actual.isUpdateReadyForDownload(),
+  );
+  const [applying, setApplying] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void global.Actual.waitForUpdateReadyForDownload().then(() => {
+      if (alive) setReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!ready) return null;
+  return (
+    <button
+      type="button"
+      disabled={applying}
+      onClick={() => {
+        setApplying(true);
+        void global.Actual.applyAppUpdate();
+      }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        marginBottom: 16,
+        padding: '14px 16px',
+        borderRadius: 18,
+        backgroundColor: `${accent}1f`,
+        border: `1px solid ${accent}44`,
+        color: theme.pageText,
+        font: 'inherit',
+        fontSize: 15,
+        textAlign: 'left',
+        cursor: 'pointer',
+      }}
+    >
+      <RefreshCw size={18} color={accent} />
+      <span style={{ flex: 1 }}>
+        {applying ? 'Mise à jour…' : 'Une nouvelle version est disponible'}
+      </span>
+      {!applying && (
+        <span style={{ color: accent, fontWeight: 600 }}>Mettre à jour</span>
+      )}
+    </button>
+  );
+}
+
 // Each screen starts at the top, not where the previous one was scrolled to.
 function ScrollArea({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -282,6 +335,7 @@ export function HomeApp() {
               flexShrink: 0,
             }}
           >
+            <UpdateBanner />
             <Screens />
           </View>
         </ScrollArea>
@@ -303,6 +357,7 @@ export function HomeApp() {
             padding: mode === 'desktop' ? '40px 48px' : '32px 28px',
           }}
         >
+          <UpdateBanner />
           <Screens />
         </View>
       </ScrollArea>

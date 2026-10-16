@@ -30,6 +30,7 @@ import {
   useMonthlyBudget,
   useSpending,
 } from './spending';
+import { useIsSubscription } from './subscriptions';
 import { TransactionList } from './TransactionList';
 import { TransactionSheet } from './TransactionSheet';
 
@@ -157,7 +158,12 @@ export function TodayScreen() {
   const inbox = useInboxCounts();
   const staleDays = useStaleSync();
 
-  const spent = useSpending({ date: day });
+  const daySpending = useSpending({ date: day });
+  // Subscriptions are planned costs: they stay out of the daily budget and are listed apart.
+  const isSubscription = useIsSubscription();
+  const daySubscriptions = daySpending.transactions.filter(isSubscription);
+  const dayCharges = daySpending.transactions.filter(t => !isSubscription(t));
+  const spent = dayCharges.reduce((sum, t) => sum - t.amount, 0);
   const monthSpending = useSpending({
     date: { $transform: '$month', $eq: month },
   });
@@ -301,9 +307,9 @@ export function TodayScreen() {
 
       <View style={columns(mode, mode === 'desktop' ? '440px 1fr' : '1fr 1fr')}>
         <Card style={{ alignItems: 'center', gap: 18, paddingTop: 24 }}>
-          <BudgetRing spent={spent.total} budget={dailyBudget} />
+          <BudgetRing spent={spent} budget={dailyBudget} />
           <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch' }}>
-            <Stat label="Dépensé" value={formatAmount(spent.total)} />
+            <Stat label="Dépensé" value={formatAmount(spent)} />
             <Stat
               label={month === today.slice(0, 7) ? 'Ce mois-ci' : 'Ce mois-là'}
               value={`${formatAmount(monthSpending.total)} / ${formatAmount(
@@ -323,7 +329,7 @@ export function TodayScreen() {
           <SectionTitle>Dépenses du jour</SectionTitle>
           <Card style={{ padding: 6 }}>
             <TransactionList
-              transactions={spent.transactions}
+              transactions={dayCharges}
               empty={
                 day === today
                   ? "Rien pour l'instant. Touche + pour noter une dépense."
@@ -332,6 +338,18 @@ export function TodayScreen() {
               onSelect={setEditing}
             />
           </Card>
+          {daySubscriptions.length > 0 && (
+            <>
+              <SectionTitle>Abonnements · hors budget du jour</SectionTitle>
+              <Card style={{ padding: 6 }}>
+                <TransactionList
+                  transactions={daySubscriptions}
+                  empty=""
+                  onSelect={setEditing}
+                />
+              </Card>
+            </>
+          )}
           {incomes.length > 0 && (
             <>
               <SectionTitle>Rentrées</SectionTitle>

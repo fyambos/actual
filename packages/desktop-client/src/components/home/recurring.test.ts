@@ -1,4 +1,8 @@
-import { detectSubscriptions, merchantName } from './recurring';
+import {
+  detectSubscriptions,
+  matchesSubscription,
+  merchantName,
+} from './recurring';
 
 describe('merchantName', () => {
   it('drops the card prefix, invoice date and currency', () => {
@@ -93,5 +97,29 @@ describe('detectSubscriptions', () => {
       '2026-09-25',
     );
     expect(found).toEqual([]);
+  });
+});
+
+describe('matchesSubscription', () => {
+  const monthly = (name: string, amount: number, dates: string[]) =>
+    dates.map(date => ({ date, amount, name }));
+  const plans = detectSubscriptions(
+    monthly('Uber One', 599, ['2026-07-03', '2026-08-03', '2026-09-03']),
+    '2026-10-01',
+  );
+
+  it('matches a charge of the same merchant and amount', () => {
+    expect(matchesSubscription({ name: 'uber one', amount: 599 }, plans)).toBe(
+      true,
+    );
+  });
+
+  it('ignores another amount or merchant', () => {
+    expect(matchesSubscription({ name: 'Uber One', amount: 2599 }, plans)).toBe(
+      false,
+    );
+    expect(matchesSubscription({ name: 'Uber Eats', amount: 599 }, plans)).toBe(
+      false,
+    );
   });
 });

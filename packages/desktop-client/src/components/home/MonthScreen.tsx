@@ -29,6 +29,7 @@ import {
   useMonthlyBudget,
   useSpending,
 } from './spending';
+import { useIsSubscription } from './subscriptions';
 import { TransactionList } from './TransactionList';
 import { TransactionSheet } from './TransactionSheet';
 
@@ -122,13 +123,12 @@ export function MonthScreen() {
   const elapsed = isCurrent ? Number(today.slice(8, 10)) : daysInMonth;
   const left = monthlyBudget - total;
 
-  const perDay = useMemo(() => {
-    const totals = Array.from({ length: daysInMonth }, () => 0);
-    for (const t of transactions) {
-      totals[Number(t.date.slice(8, 10)) - 1] -= t.amount;
-    }
-    return totals;
-  }, [transactions, daysInMonth]);
+  // The bars are measured against the daily budget, which subscriptions stay out of.
+  const isSubscription = useIsSubscription();
+  const perDay = Array.from({ length: daysInMonth }, () => 0);
+  for (const t of transactions) {
+    if (!isSubscription(t)) perDay[Number(t.date.slice(8, 10)) - 1] -= t.amount;
+  }
   const tallest = Math.max(dailyBudget * 1.5, ...perDay);
 
   const byCategory = useMemo(() => {

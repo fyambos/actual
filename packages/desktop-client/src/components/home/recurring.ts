@@ -118,3 +118,16 @@ export function monthlyCost(subscription: Subscription) {
     ? subscription.amount
     : subscription.amount / 12;
 }
+
+// A charge belongs to a plan when it has the plan's merchant and an amount within 10% of it.
+export function matchesSubscription(
+  charge: Pick<Charge, 'name' | 'amount'>,
+  subscriptions: Subscription[],
+) {
+  const name = charge.name.toLowerCase();
+  return subscriptions.some(
+    s =>
+      s.name.toLowerCase() === name &&
+      Math.abs(charge.amount - s.amount) <= Math.abs(s.amount) * 0.1,
+  );
+}
