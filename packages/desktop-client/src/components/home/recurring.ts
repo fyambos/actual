@@ -310,3 +310,21 @@ export function matchesSubscription(
         Math.abs(charge.amount - s.amount) <= Math.abs(s.amount) * 0.1),
   );
 }
+
+// A charge refunded within a few days by the same merchant (a bank fee waived every month) costs
+// nothing, so it does not make a plan.
+export function withoutRefunded(charges: Charge[], refunds: Charge[]) {
+  const used = new Set<Charge>();
+  return charges.filter(charge => {
+    const refund = refunds.find(
+      r =>
+        !used.has(r) &&
+        r.name.toLowerCase() === charge.name.toLowerCase() &&
+        r.amount >= charge.amount * 0.9 &&
+        days(charge.date, r.date) >= 0 &&
+        days(charge.date, r.date) <= 5,
+    );
+    if (refund) used.add(refund);
+    return !refund;
+  });
+}

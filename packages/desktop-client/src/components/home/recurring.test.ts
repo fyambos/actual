@@ -2,6 +2,7 @@ import {
   detectSubscriptions,
   matchesSubscription,
   merchantName,
+  withoutRefunded,
 } from './recurring';
 
 describe('merchantName', () => {
@@ -205,5 +206,18 @@ describe('matchesSubscription', () => {
     expect(found).toEqual([
       expect.objectContaining({ amount: 270, active: true }),
     ]);
+  });
+});
+
+describe('withoutRefunded', () => {
+  it('drops a charge the merchant refunds within a few days', () => {
+    const fee = { name: 'Banque', amount: 3195, date: '2026-09-16' };
+    const other = { name: 'Banque', amount: 270, date: '2026-09-04' };
+    expect(
+      withoutRefunded(
+        [fee, other],
+        [{ name: 'Banque', amount: 3187, date: '2026-09-16' }],
+      ),
+    ).toEqual([other]);
   });
 });
